@@ -87,7 +87,7 @@ public class CustomExceptionHandlerResolver {
 
 }
 ```
-ac
+
 The most important thing is that we must find the concise exception class thrown, and in our case, it is
 `org.springframework.http.converter.HttpMessageNotReadableException`.
 
@@ -96,6 +96,10 @@ The most important thing is that we must find the concise exception class thrown
 The text got from `HttpMessageNotReadableException` is created by the spring framework and is kinda robotic.
 
 What if we want to use information from validation annotation we defined? I cannot find a way to achieve this by now.
+
+I have to say, data conversion and validation are two different steps, the current error message displayed for data 
+binding error is correct. We should not display the message defined in validation annotation, and the message defined 
+in validation annotation should not care about things that happen in the conversion step.   
 
 ## 3 Test Step
 
