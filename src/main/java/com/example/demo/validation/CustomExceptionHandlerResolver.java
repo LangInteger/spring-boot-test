@@ -56,7 +56,7 @@ public class CustomExceptionHandlerResolver {
   @ExceptionHandler
   @ResponseBody
   @ResponseStatus(HttpStatus.OK)
-  protected DataContainer handleMethodArgumentNotValidException(
+  public DataContainer handleMethodArgumentNotValidException(
       HttpServletRequest request, HttpServletResponse response, MethodArgumentNotValidException ex)
       throws IOException {
     System.out.println("In handleMethodArgumentNotValidException");
