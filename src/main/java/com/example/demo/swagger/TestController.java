@@ -1,5 +1,6 @@
-package com.example.demo;
+package com.example.demo.swagger;
 
+import com.example.demo.swagger.Message;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import org.springframework.http.ResponseEntity;
