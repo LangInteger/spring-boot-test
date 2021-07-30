@@ -1,6 +1,6 @@
-# Spring Boot Swagger Demo
+# Swagger Test
 
-This code in package `com.example.demo.swagger` tests a bug in swagger version 3.0.0
+This code in package `com.example.demo.swagger` tests a bug in swagger version 3.0.0 which is introduced by [this SO thread](https://stackoverflow.com/questions/68244639/i-have-custom-annotation-dto-that-transform-body-from-dto-to-entity-however-swa/68250896#68250896)
 
 ## Comparison
 
