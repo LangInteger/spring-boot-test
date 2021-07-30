@@ -87,7 +87,7 @@ public class CustomExceptionHandlerResolver {
 
 }
 ```
-
+ac
 The most important thing is that we must find the concise exception class thrown, and in our case, it is
 `org.springframework.http.converter.HttpMessageNotReadableException`.
 
