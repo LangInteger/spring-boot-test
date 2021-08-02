@@ -1,19 +1,38 @@
 # Spring Validation Mechanism Test
 
-[This Stackoverflow Question](https://stackoverflow.com/questions/68590470/add-custom-validation-on-age-field-exception-in-java-spring/68590906#68590906) 
-comes up with 
+[This Stackoverflow Topic](https://stackoverflow.com/questions/68590470/add-custom-validation-on-age-field-exception-in-java-spring/68590906#68590906) 
+comes up with two questions.
 
 - Q1: how to distinguish exceptions between 
-  - data binding
-  - customized validation regulation check
-
-There is also another requirement of:
-
+  - data binding when conversion http request body to object
+  - customized validation defined as annotation on that object
 - Q2: how to display valuable information when data binding fails
+
+All the code can be found in [this repo](https://github.com/LangInteger/spring-boot-test). All test code related to 
+this topic is under package `com.example.demo.validation`.
+
+The main data structure to be used:
+
+```java
+@Data
+public class Person {
+
+  @Digits(integer = 200, fraction = 0, message = "code should be number and no larger than 200")
+  private int ageInt;
+
+  @Digits(integer = 200, fraction = 0, message = "code should be number and no larger than 200")
+  private String ageString;
+}
+```
+
+The project can be run with command:
+                                                                                           
+- `gradlew clean bootRun`
 
 ## 1 Distinguish Exceptions
 
-In my test, I found it is possible to achieve this by `ControllerAdvice`:
+It is possible to achieve this by `ControllerAdvice`. The most important thing is to find the concise exception class 
+thrown, and in our case, it is `org.springframework.http.converter.HttpMessageNotReadableException`.
 
 ```java
 package com.example.demo.validation;
@@ -73,7 +92,7 @@ public class CustomExceptionHandlerResolver {
    */
   @ExceptionHandler
   @ResponseBody
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  @ResponseStatus(HttpStatus.OK)
   protected DataContainer handleMethodArgumentNotValidException(
       HttpServletRequest request, HttpServletResponse response, MethodArgumentNotValidException ex)
       throws IOException {
@@ -88,28 +107,48 @@ public class CustomExceptionHandlerResolver {
 }
 ```
 
-The most important thing is that we must find the concise exception class thrown, and in our case, it is
-`org.springframework.http.converter.HttpMessageNotReadableException`.
+## 2 Display Valuable Information for Data Binding Exception
 
-## 2 Display Valuable Information for data binding exception
+The text got from `HttpMessageNotReadableException` is created by the spring framework and is kinda robotic. We can use 
+customize json deserializer to make the message more readable. Jackson itself doesn't support 
+[customized information](https://github.com/FasterXML/jackson-annotations/issues/130) to be thrown in data binding fail yet.
 
-The text got from `HttpMessageNotReadableException` is created by the spring framework and is kinda robotic.
+Add a field to `Person`:
 
-What if we want to use information from validation annotation we defined? I cannot find a way to achieve this by now.
+```java
+  @JsonDeserialize(using = MyIntDeserializer.class)
+  private int ageStringWithCustomizeErrorMessage;
+```
 
-I have to say, data conversion and validation are two different steps, the current error message displayed for data 
-binding error is correct. We should not display the message defined in validation annotation, and the message defined 
-in validation annotation should not care about things that happen in the conversion step.   
+```java
+class MyIntDeserializer extends JsonDeserializer<Integer> {
+
+  @Override
+  public Integer deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException {
+    String text = p.getText();
+    if (text == null || text.equals("")) {
+      return 0;
+    }
+
+    int result;
+    try {
+      result = Integer.parseInt(text);
+    } catch (Exception ex) {
+      throw new RuntimeException("ageStringWithCustomizeErrorMessage must be number");
+    }
+
+    if (result < 0 || result >= 200) {
+      throw new RuntimeException("ageStringWithCustomizeErrorMessage must in (0, 200)");
+    }
+
+    return result;
+  }
+}
+```
 
 ## 3 Test Step
 
-All test code related to this topic is under package `com.example.demo.validation`.
-
-Download this project and run with 
-
-- `gradlew clean bootRun`
-
-### 3.1 Test `MethodArgumentNotValidException`
+### 3.1 Test Validation Fail
 
 Request:
 
@@ -125,7 +164,7 @@ Response:
 }
 ```
 
-### 3.2 Test `HttpMessageNotReadableException`
+### 3.2 Test Data Binding Fail
 
 Request:
 
@@ -141,9 +180,39 @@ Response:
 }
 ```
 
-### 3.3 Tips
+### 3.3 Test Data Binding in Customized Deserializer
 
-You can also pen `http://localhost:8080/swagger-ui/#/validation-test-controller/validationTestUsingPOST` 
-in your browser and test in web page more easily.
+Request:
 
+- curl -X POST "http://localhost:8080/validationTest" -H "accept: */*" -H "Content-Type: application/json" -d "{ \"ageInt\": 0, \"ageString\": \"0\", \"ageStringWithCustomizeErrorMessage\": \"aa\"}"
 
+Response:
+
+```json
+{
+  "code": 400,
+  "message": "JSON parse error: ageStringWithCustomizeErrorMessage must be number; nested exception is com.fasterxml.jackson.databind.JsonMappingException: ageStringWithCustomizeErrorMessage must be number (through reference chain: com.example.demo.validation.Person[\"ageStringWithCustomizeErrorMessage\"])",
+  "data": null
+}
+```
+
+Request:
+
+- curl -X POST "http://localhost:8080/validationTest" -H "accept: */*" -H "Content-Type: application/json" -d "{ \"ageInt\": 0, \"ageString\": \"0\", \"ageStringWithCustomizeErrorMessage\": \"-1\"}"
+
+Response:
+
+```json
+{
+  "code": 400,
+  "message": "JSON parse error: ageStringWithCustomizeErrorMessage must in (0, 200); nested exception is com.fasterxml.jackson.databind.JsonMappingException: ageStringWithCustomizeErrorMessage must in (0, 200) (through reference chain: com.example.demo.validation.Person[\"ageStringWithCustomizeErrorMessage\"])",
+  "data": null
+}
+```
+
+It's still a little robotic, but with more concise information offered by code.
+
+### 3.4 Tips
+
+Open `http://localhost:8080/swagger-ui/#/validation-test-controller/validationTestUsingPOST` 
+in browser and all requests can be made in web page easily.
